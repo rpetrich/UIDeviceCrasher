@@ -1,29 +1,41 @@
 #import <Foundation/Foundation.h>
 #import <CaptainHook/CaptainHook.h>
+#import <substrate.h>
 
 static bool allowed;
 
-CHDeclareClass(UIApplication);
+size_t UIApplicationInitialize();
 
-CHOptimizedClassMethod(1, super, id, UIApplication, allocWithZone, NSZone *, zone)
+MSHook(size_t, UIApplicationInitialize)
 {
 	allowed = true;
-	return CHSuper(1, UIApplication, allocWithZone, zone);
+	return _UIApplicationInitialize();
 }
 
 CHDeclareClass(UIDevice);
 
-CHOptimizedClassMethod(0, super, UIDevice *, UIDevice, currentDevice)
+CHOptimizedClassMethod(0, self, UIDevice *, UIDevice, currentDevice)
 {
 	if (!allowed)
 		@throw [NSException exceptionWithName:@"UIDeviceNotAllowed" reason:@"Check the call stack to see which extension is using [UIDevice currentDevice] improperly" userInfo:nil];
 	return CHSuper(0, UIDevice, currentDevice);
 }
 
+CHDeclareClass(NSException);
+
+CHOptimizedClassMethod(1, super, id, NSException, allocWithZone, NSZone *, zone)
+{
+	NSLog(@"NSException created from %@", [NSThread callStackSymbols]);
+	return CHSuper(1, NSException, allocWithZone, zone);
+}
+
 CHConstructor
 {
-	CHLoadLateClass(UIApplication);
-	CHHook(1, UIApplication, allocWithZone);
+	MSHookFunction(&UIApplicationInitialize, &$UIApplicationInitialize, (void **)&_UIApplicationInitialize);
 	CHLoadLateClass(UIDevice);
 	CHHook(0, UIDevice, currentDevice);
+	if ([NSThread respondsToSelector:@selector(callStackSymbols)]) {
+		CHLoadClass(NSException);
+		CHHook(1, NSException, allocWithZone);
+	}
 }
