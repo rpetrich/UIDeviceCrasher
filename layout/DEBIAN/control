@@ -2,7 +2,7 @@ Package: com.rpetrich.uidevicecrasher
 Name: UIDeviceCrasher
 Version: 0.1
 Architecture: iphoneos-arm
-Description: Crashes SpringBoard when UIDevice is accessed too early
+Description: Helps to debug reboot issues
 Maintainer: Ryan Petrich <rpetrich@gmail.com>
 Author: Ryan Petrich <rpetrich@gmail.com>
 Depends: mobilesubstrate, firmware (>= 3.0)
