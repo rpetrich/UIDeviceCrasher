@@ -11,6 +11,7 @@ TARGET_IPHONEOS_DEPLOYMENT_VERSION = 3.0
 
 TWEAK_NAME = __UIDeviceCrasher
 __UIDeviceCrasher_FILES = UIDeviceCrasher.x
+__UIDeviceCrasher_LIBRARIES = substrate
 __UIDeviceCrasher_FRAMEWORKS = Foundation UIKit
 
 include framework/makefiles/common.mk
