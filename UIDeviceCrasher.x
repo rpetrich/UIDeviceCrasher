@@ -1,9 +1,13 @@
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
 #import <substrate.h>
+#import <dlfcn.h>
+#import <execinfo.h>
+#import <CoreFoundation/CFUserNotification.h>
 
 static bool allowed;
-static NSArray *badSymbols;
+static int symbolCount;
+#define MAX_SYMBOLS 1000
+static void *symbols[MAX_SYMBOLS];
 
 size_t UIApplicationInitialize();
 
@@ -17,13 +21,11 @@ MSHook(size_t, UIApplicationInitialize)
 
 + (UIDevice *)currentDevice
 {
-	if (!allowed && !badSymbols) {
-		NSArray *symbols = [NSThread callStackSymbols];
+	if (!allowed) {
 		@synchronized (self) {
-			if (badSymbols)
-				[symbols release];
-			else
-				badSymbols = symbols;
+			if (symbolCount < MAX_SYMBOLS) {
+				symbolCount += backtrace(&symbols[symbolCount], MAX_SYMBOLS - symbolCount);
+			}
 		}
 	}
 	return %orig();
@@ -36,13 +38,37 @@ MSHook(size_t, UIApplicationInitialize)
 - (void)_reportAppLaunchFinished
 {
 	%orig();
-	if (badSymbols) {
-		UIAlertView *av = [[UIAlertView alloc] init];
-		av.title = @"UIDeviceCrasher";
-		av.message = [badSymbols description];
-		[av addButtonWithTitle:@"OK"];
-		[av show];
-		[av release];
+	if (symbolCount) {
+		NSMutableSet *alreadyAdded = [NSMutableSet set];
+		[alreadyAdded addObject:@"/Library/MobileSubstrate/DynamicLibraries/AAAUIDeviceCrasher.dylib"];
+		[alreadyAdded addObject:@"/usr/lib/system/libdyld.dylib"];
+		[alreadyAdded addObject:@"/Library/Frameworks/CydiaSubstrate.framework/Libraries/SubstrateLoader.dylib"];
+		[alreadyAdded addObject:@"/Library/MobileSubstrate/MobileSubstrate.dylib"];
+		[alreadyAdded addObject:@"/System/Library/Frameworks/UIKit.framework/UIKit"];
+		[alreadyAdded addObject:@"/System/Library/Frameworks/Foundation.framework/Foundation"];
+		[alreadyAdded addObject:@"/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"];
+		[alreadyAdded addObject:@"/System/Library/CoreServices/SpringBoard.app/SpringBoard"];
+		NSMutableArray *libraries = [NSMutableArray array];
+		Dl_info info;
+		for (int i = 0; i < symbolCount; i++) {
+			if (dladdr(symbols[i], &info) && info.dli_fname) {
+				NSString *string = [NSString stringWithUTF8String:info.dli_fname];
+				NSLog(@"UIDeviceCrasher: %@", string);
+				if (![alreadyAdded containsObject:string] && ![string hasPrefix:@"/System/Library/PrivateFrameworks/"] && ![string hasPrefix:@"/usr/lib/system/"]) {
+					[alreadyAdded addObject:string];
+					[libraries addObject:[[string lastPathComponent] stringByDeletingPathExtension]];
+				}
+			}
+		}
+		NSString *prefix = [libraries count] ? @"One of the following components may be causing reboots to fail:\n" : @"The following component may be causing reboots to fail:\n";
+		NSString *message = [prefix stringByAppendingString:[libraries componentsJoinedByString:@"\n"]];
+		NSDictionary *fields = [NSDictionary dictionaryWithObjectsAndKeys:
+			@"UIDeviceCrasher", (id)kCFUserNotificationAlertHeaderKey,
+			message, kCFUserNotificationAlertMessageKey,
+			nil];
+		SInt32 error;
+		// Leaks, but I don't care
+		CFUserNotificationCreate(kCFAllocatorDefault, 0, kCFUserNotificationNoteAlertLevel, &error, (CFDictionaryRef)fields);
 	}
 }
 
