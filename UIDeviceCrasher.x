@@ -1,8 +1,9 @@
 #import <Foundation/Foundation.h>
-#import <CaptainHook/CaptainHook.h>
+#import <UIKit/UIKit.h>
 #import <substrate.h>
 
 static bool allowed;
+static NSArray *badSymbols;
 
 size_t UIApplicationInitialize();
 
@@ -16,24 +17,34 @@ MSHook(size_t, UIApplicationInitialize)
 
 + (UIDevice *)currentDevice
 {
-	if (!allowed)
-		@throw [NSException exceptionWithName:@"UIDeviceNotAllowed" reason:@"Check the call stack to see which extension is using [UIDevice currentDevice] improperly" userInfo:nil];
+	if (!allowed && !badSymbols) {
+		NSArray *symbols = [NSThread callStackSymbols];
+		@synchronized (self) {
+			if (badSymbols)
+				[symbols release];
+			else
+				badSymbols = symbols;
+		}
+	}
 	return %orig();
 }
 
 %end
 
-%group Exception
+%hook SpringBoard
 
-%hook NSException
-
-+ (id)allocWithZone:(NSZone *)zone
+- (void)_reportAppLaunchFinished
 {
-	NSLog(@"NSException created from %@", [NSThread callStackSymbols]);
-	return %orig();
+	%orig();
+	if (badSymbols) {
+		UIAlertView *av = [[UIAlertView alloc] init];
+		av.title = @"UIDeviceCrasher";
+		av.message = [badSymbols description];
+		[av addButtonWithTitle:@"OK"];
+		[av show];
+		[av release];
+	}
 }
-
-%end
 
 %end
 
@@ -41,7 +52,4 @@ MSHook(size_t, UIApplicationInitialize)
 {
 	MSHookFunction(&UIApplicationInitialize, &$UIApplicationInitialize, (void **)&_UIApplicationInitialize);
 	%init();
-	if ([NSThread respondsToSelector:@selector(callStackSymbols)]) {
-		%init(Exception);
-	}
 }
