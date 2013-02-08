@@ -12,30 +12,36 @@ MSHook(size_t, UIApplicationInitialize)
 	return _UIApplicationInitialize();
 }
 
-CHDeclareClass(UIDevice);
+%hook UIDevice
 
-CHOptimizedClassMethod(0, self, UIDevice *, UIDevice, currentDevice)
++ (UIDevice *)currentDevice
 {
 	if (!allowed)
 		@throw [NSException exceptionWithName:@"UIDeviceNotAllowed" reason:@"Check the call stack to see which extension is using [UIDevice currentDevice] improperly" userInfo:nil];
-	return CHSuper(0, UIDevice, currentDevice);
+	return %orig();
 }
 
-CHDeclareClass(NSException);
+%end
 
-CHOptimizedClassMethod(1, super, id, NSException, allocWithZone, NSZone *, zone)
+%group Exception
+
+%hook NSException
+
++ (id)allocWithZone:(NSZone *)zone
 {
 	NSLog(@"NSException created from %@", [NSThread callStackSymbols]);
-	return CHSuper(1, NSException, allocWithZone, zone);
+	return %orig();
 }
 
-CHConstructor
+%end
+
+%end
+
+%ctor
 {
 	MSHookFunction(&UIApplicationInitialize, &$UIApplicationInitialize, (void **)&_UIApplicationInitialize);
-	CHLoadLateClass(UIDevice);
-	CHHook(0, UIDevice, currentDevice);
+	%init();
 	if ([NSThread respondsToSelector:@selector(callStackSymbols)]) {
-		CHLoadClass(NSException);
-		CHHook(1, NSException, allocWithZone);
+		%init(Exception);
 	}
 }
