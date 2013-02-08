@@ -1,6 +1,6 @@
 Package: com.rpetrich.uidevicecrasher
 Name: UIDeviceCrasher
-Version: 0.1
+Version: 0.2
 Architecture: iphoneos-arm
 Description: Helps to debug reboot issues
 Maintainer: Ryan Petrich <rpetrich@gmail.com>
