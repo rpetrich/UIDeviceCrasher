@@ -33,6 +33,22 @@ MSHook(size_t, UIApplicationInitialize)
 
 %end
 
+%hook UIScreen
+
++ (UIScreen *)mainScreen
+{
+	if (!allowed) {
+		@synchronized (self) {
+			if (symbolCount < MAX_SYMBOLS) {
+				symbolCount += backtrace(&symbols[symbolCount], MAX_SYMBOLS - symbolCount);
+			}
+		}
+	}
+	return %orig();
+}
+
+%end
+
 %hook SpringBoard
 
 - (void)_reportAppLaunchFinished
