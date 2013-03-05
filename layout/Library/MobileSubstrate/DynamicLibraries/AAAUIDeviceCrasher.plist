@@ -1,1 +1,1 @@
-__UIDeviceCrasher.plist
+Filter = {Bundles = ("com.apple.springboard");};
