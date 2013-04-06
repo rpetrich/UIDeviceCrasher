@@ -11,6 +11,10 @@ static void *symbols[MAX_SYMBOLS];
 
 size_t UIApplicationInitialize();
 
+static BOOL ShouldThrowInsteadOfAlert(void) {
+	return [[[NSDictionary dictionaryWithContentsOfFile:@"/var/mobile/Library/Preferences/com.rpetrich.uidevicecrasher.plist"] objectForKey:@"DCShouldThrow"] boolValue];
+}
+
 MSHook(size_t, UIApplicationInitialize)
 {
 	allowed = true;
@@ -23,6 +27,9 @@ MSHook(size_t, UIApplicationInitialize)
 {
 	if (!allowed) {
 		@synchronized (self) {
+			if (ShouldThrowInsteadOfAlert()) {
+				[NSException raise:NSInternalInconsistencyException format:@"+[UIDevice currentDevice] called before UIApplicationInitialize!"];
+			}
 			if (symbolCount < MAX_SYMBOLS) {
 				symbolCount += backtrace(&symbols[symbolCount], MAX_SYMBOLS - symbolCount);
 			}
@@ -35,10 +42,43 @@ MSHook(size_t, UIApplicationInitialize)
 
 %hook UIScreen
 
++ (void)initialize
+{
+	if (!allowed) {
+		@synchronized (self) {
+			if (ShouldThrowInsteadOfAlert()) {
+				[NSException raise:NSInternalInconsistencyException format:@"+[UIScreen initialize] called before UIApplicationInitialize!"];
+			}
+			if (symbolCount < MAX_SYMBOLS) {
+				symbolCount += backtrace(&symbols[symbolCount], MAX_SYMBOLS - symbolCount);
+			}
+		}
+	}
+	%orig();
+}
+
 + (UIScreen *)mainScreen
 {
 	if (!allowed) {
 		@synchronized (self) {
+			if (ShouldThrowInsteadOfAlert()) {
+				[NSException raise:NSInternalInconsistencyException format:@"+[UIScreen mainScreen] called before UIApplicationInitialize!"];
+			}
+			if (symbolCount < MAX_SYMBOLS) {
+				symbolCount += backtrace(&symbols[symbolCount], MAX_SYMBOLS - symbolCount);
+			}
+		}
+	}
+	return %orig();
+}
+
++ (NSArray *)screens
+{
+	if (!allowed) {
+		@synchronized (self) {
+			if (ShouldThrowInsteadOfAlert()) {
+				[NSException raise:NSInternalInconsistencyException format:@"+[UIScreen screens] called before UIApplicationInitialize!"];
+			}
 			if (symbolCount < MAX_SYMBOLS) {
 				symbolCount += backtrace(&symbols[symbolCount], MAX_SYMBOLS - symbolCount);
 			}
