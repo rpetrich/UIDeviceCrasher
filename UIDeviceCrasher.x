@@ -97,13 +97,16 @@ MSHook(size_t, UIApplicationInitialize)
 	if (symbolCount) {
 		NSMutableSet *alreadyAdded = [NSMutableSet set];
 		[alreadyAdded addObject:@"/Library/MobileSubstrate/DynamicLibraries/AAAUIDeviceCrasher.dylib"];
-		[alreadyAdded addObject:@"/usr/lib/system/libdyld.dylib"];
 		[alreadyAdded addObject:@"/Library/Frameworks/CydiaSubstrate.framework/Libraries/SubstrateLoader.dylib"];
 		[alreadyAdded addObject:@"/Library/MobileSubstrate/MobileSubstrate.dylib"];
 		[alreadyAdded addObject:@"/System/Library/Frameworks/UIKit.framework/UIKit"];
 		[alreadyAdded addObject:@"/System/Library/Frameworks/Foundation.framework/Foundation"];
 		[alreadyAdded addObject:@"/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation"];
 		[alreadyAdded addObject:@"/System/Library/CoreServices/SpringBoard.app/SpringBoard"];
+		[alreadyAdded addObject:@"/usr/lib/libobjc.A.dylib"];
+		[alreadyAdded addObject:@"/usr/lib/libobjc.dylib"];
+		[alreadyAdded addObject:@"/usr/lib/libSystem.B.dylib"];
+		[alreadyAdded addObject:@"/usr/lib/libSystem.dylib"];
 		NSMutableArray *libraries = [NSMutableArray array];
 		Dl_info info;
 		for (int i = 0; i < symbolCount; i++) {
